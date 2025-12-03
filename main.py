@@ -11,29 +11,55 @@ def metric_hsd(r1,r2):
     return tf.math.real(tf.linalg.trace(tf.linalg.matmul((r11 - r22), (r11 - r22), adjoint_a=True)))
 
 # @tf.function
-def make_density(ypred):
+def make_density2q(ypred):
+    #make the probability vector and normalize it
     pr = [ypred[i,0] for i in range(num_pure)]
-    part = tf.zeros(shape=[4,4],dtype='complex64')
-    totpr = 0.
-    for i in range(num_pure):
-        totpr += pr[i]
-    pr = pr / totpr
     pr = tf.nn.softmax(pr)
+    # make empty matrix where the CSS will be made
+    part = tf.zeros_like(target)
 
-    for i in range(num_pure):
+    for i in range(num_pure): # for each vector in pure state decomp
         m = ypred[i,1:9]
         m=tf.reshape(m,shape=[2,2,2])
         r1 = tf.reshape(tf.complex( m[0,:,0], m[0,:,1] ),shape=[2,1])
         r2 = tf.reshape(tf.complex( m[1,:,0], m[1,:,1]),shape=[2,1])
-        r1 = tf.matmul(r1,r1,adjoint_b=True)
+        r1 = tf.matmul(r1,r1,adjoint_b=True) # pure state on subsytem A
         r1 = tf.scalar_mul(1./tf.linalg.trace(r1), r1)
         r2 = tf.matmul(r2, r2, adjoint_b=True)
-        r2 = tf.scalar_mul(1. / tf.linalg.trace(r2), r2)
+        r2 = tf.scalar_mul(1. / tf.linalg.trace(r2), r2) # pure state on subsystem B
         kp = tf.linalg.LinearOperatorKronecker([tf.linalg.LinearOperatorFullMatrix(r1),tf.linalg.LinearOperatorFullMatrix(r2)])
         # print(kp.to_dense())
-        part += tf.math.scalar_mul(tf.cast(pr[i],dtype=tf.complex64), kp.to_dense())
+        part += tf.math.scalar_mul(tf.cast(pr[i],dtype=tf.complex64), kp.to_dense()) # add p[i] r1[i] r2[i]
 
     return part
+
+# @tf.function
+def make_density3q(ypred):
+    # make the probability vector and normalize it
+    pr = [ypred[i, 0] for i in range(num_pure)]
+    pr = tf.nn.softmax(pr)
+    # make empty matrix where the CSS will be made
+    part = tf.zeros_like(target)
+
+    for i in range(num_pure):  # for each vector in pure state decomp
+        m = ypred[i, 1:13]
+        m = tf.reshape(m, shape=[3, 2, 2])
+        r1 = tf.reshape(tf.complex(m[0, :, 0], m[0, :, 1]), shape=[2, 1])
+        r2 = tf.reshape(tf.complex(m[1, :, 0], m[1, :, 1]), shape=[2, 1])
+        r3 = tf.reshape(tf.complex(m[2, :, 0], m[2, :, 1]), shape=[2, 1])
+        r1 = tf.matmul(r1, r1, adjoint_b=True)  # pure state on subsytem A
+        r1 = tf.scalar_mul(1. / tf.linalg.trace(r1), r1)
+        r2 = tf.matmul(r2, r2, adjoint_b=True)
+        r2 = tf.scalar_mul(1. / tf.linalg.trace(r2), r2)  # pure state on subsystem B
+        r3 = tf.matmul(r3, r3, adjoint_b=True)
+        r3 = tf.scalar_mul(1. / tf.linalg.trace(r3), r3)  # pure state on subsystem B
+        kp = tf.linalg.LinearOperatorKronecker(
+            [tf.linalg.LinearOperatorFullMatrix(r1), tf.linalg.LinearOperatorFullMatrix(r2), tf.linalg.LinearOperatorFullMatrix(r3)])
+        # print(kp.to_dense())
+        part += tf.math.scalar_mul(tf.cast(pr[i], dtype=tf.complex64), kp.to_dense())  # add p[i] r1[i] r2[i]
+
+    return part
+
 
 def verify_density_matrix(rho, tolerance=1e-9):
     """
@@ -74,7 +100,7 @@ def verify_density_matrix(rho, tolerance=1e-9):
 
 
 def custom_loss(y_true, y_pred):
-    rho_pred = make_density(y_pred)
+    rho_pred = make_density3q(y_pred)
     return metric_hsd(target, rho_pred)
 
 def generate_test_train_XY(state,num_pure):
@@ -94,10 +120,20 @@ if __name__ == '__main__':
     print(tf.__version__)
     # Build separable approximation of target state:
     global target
-    target = tf.constant([[0.5,0,0,0.5],[0,0,0,0],[0,0,0,0],[0.5,0,0,0.5]], dtype='complex64')
+    # 3 qubit W state
+    target = tf.constant([[0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 1 / 3., 1 / 3., 0, 1 / 3., 0, 0, 0],
+                    [0, 1 / 3., 1 / 3., 0, 1 / 3., 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 1 / 3., 1 / 3., 0, 1 / 3., 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0]], dtype='complex64')
+    # Bell state 2 qubit
+    # target = tf.constant([[0.5,0,0,0.5],[0,0,0,0],[0,0,0,0],[0.5,0,0,0.5]], dtype='complex64')
     # print(target)
     global num_pure
-    num_pure = 8
+    num_pure = 64
     inputs = tf.one_hot(tf.constant(range(num_pure)),depth=num_pure)
     # print(inputs)
 
@@ -106,7 +142,7 @@ if __name__ == '__main__':
             tf.keras.Input(shape=(num_pure,)),
             tf.keras.layers.Dense(64, activation='tanh'),
             tf.keras.layers.Dense(64, activation='tanh'),
-            tf.keras.layers.Dense(9,activation='tanh')
+            tf.keras.layers.Dense(13,activation='tanh')
         ]
     )
     result = model.predict(inputs)
@@ -139,8 +175,8 @@ if __name__ == '__main__':
     )
     yres = model.predict(inputs)
     print("This is the result of the NN:")
-    print(make_density(yres))
-    verify_density_matrix(make_density(yres).numpy())
+    print(make_density3q(yres))
+    verify_density_matrix(make_density3q(yres).numpy())
 
 
 
