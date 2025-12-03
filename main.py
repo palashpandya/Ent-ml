@@ -98,7 +98,7 @@ if __name__ == '__main__':
     global num_pure
     num_pure = 4
     inputs = tf.one_hot(tf.constant(range(num_pure)),depth=num_pure)
-    print(inputs)
+    # print(inputs)
 
     model = tf.keras.models.Sequential(
         [
@@ -112,10 +112,10 @@ if __name__ == '__main__':
     result = model.predict(inputs)
     print("Printing the model Summary")
     print(model.summary())
-    print("Check if the sum of the outputs is 1:")
-    print(tf.reduce_sum(result[1]))
-    print("Check if we can make a valid density our of the results")
-    print(make_density(result))
+    # print("Check if the sum of the outputs is 1:")
+    # print(tf.reduce_sum(result[1]))
+    # print("Check if we can make a valid density our of the results")
+    # print(make_density(result))
     model.compile(optimizer='adam',loss = custom_loss,metrics=[custom_loss])
     # xy = [data for data in generate_test_train_XY(target, num_pure)]
     # print(tf.shape(xy))
