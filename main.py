@@ -142,6 +142,7 @@ if __name__ == '__main__':
             tf.keras.Input(shape=(num_pure,)),
             tf.keras.layers.Dense(64, activation='tanh'),
             tf.keras.layers.Dense(64, activation='tanh'),
+            tf.keras.layers.Dense(64, activation='tanh'),
             tf.keras.layers.Dense(13,activation='tanh')
         ]
     )
@@ -152,24 +153,18 @@ if __name__ == '__main__':
     # print(tf.reduce_sum(result[1]))
     # print("Check if we can make a valid density our of the results")
     # print(make_density(result))
-    model.compile(optimizer='sgd',loss = custom_loss,metrics=[custom_loss])
-    # xy = [data for data in generate_test_train_XY(target, num_pure)]
-    # print(tf.shape(xy))
+    model.compile(optimizer='adam',loss = custom_loss,metrics=[custom_loss])
     batchsize =num_pure
-    xtrain = inputs
-    ytrain = np.array([tf.reshape(target,[-1]) for _ in range(num_pure)])
-    print(xtrain, ytrain)
     history = model.fit(
         generate_test_train_XY(target,num_pure),
-        batch_size=num_pure,
+        batch_size=num_pure*2,
         epochs=num_pure,
         steps_per_epoch=num_pure**2,
-        # epochs=3,
         # We pass some validation for
         # monitoring validation loss and metrics
         # at the end of each epoch
         validation_data= generate_test_train_XY(target,num_pure),
-        # callbacks = [CC_mindelta()],
+        callbacks = [CC_mindelta()],
         validation_steps = 32, class_weight = None,
         shuffle = False, initial_epoch = 0
     )
