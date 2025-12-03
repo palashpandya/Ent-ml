@@ -18,6 +18,7 @@ def make_density(ypred):
     for i in range(num_pure):
         totpr += pr[i]
     pr = pr / totpr
+    pr = tf.nn.softmax(pr)
 
     for i in range(num_pure):
         m = ypred[i,1:9]
@@ -96,17 +97,16 @@ if __name__ == '__main__':
     target = tf.constant([[0.5,0,0,0.5],[0,0,0,0],[0,0,0,0],[0.5,0,0,0.5]], dtype='complex64')
     # print(target)
     global num_pure
-    num_pure = 16
+    num_pure = 8
     inputs = tf.one_hot(tf.constant(range(num_pure)),depth=num_pure)
     # print(inputs)
 
     model = tf.keras.models.Sequential(
         [
             tf.keras.Input(shape=(num_pure,)),
-            tf.keras.layers.Dense(64,activation=tf.keras.layers.LeakyReLU(negative_slope=0.01)),
-            tf.keras.layers.Dense(64,activation=tf.keras.layers.LeakyReLU(negative_slope=0.01)),
-            tf.keras.layers.Dense(64, activation=tf.keras.layers.LeakyReLU(negative_slope=0.01)),
-            tf.keras.layers.Dense(9,activation='softmax')
+            tf.keras.layers.Dense(64, activation='tanh'),
+            tf.keras.layers.Dense(64, activation='tanh'),
+            tf.keras.layers.Dense(9,activation='tanh')
         ]
     )
     result = model.predict(inputs)
@@ -119,15 +119,15 @@ if __name__ == '__main__':
     model.compile(optimizer='sgd',loss = custom_loss,metrics=[custom_loss])
     # xy = [data for data in generate_test_train_XY(target, num_pure)]
     # print(tf.shape(xy))
-    batchsize =320
+    batchsize =num_pure
     xtrain = inputs
     ytrain = np.array([tf.reshape(target,[-1]) for _ in range(num_pure)])
     print(xtrain, ytrain)
     history = model.fit(
         generate_test_train_XY(target,num_pure),
         batch_size=num_pure,
-        epochs=72,
-        steps_per_epoch=200,
+        epochs=num_pure,
+        steps_per_epoch=num_pure**2,
         # epochs=3,
         # We pass some validation for
         # monitoring validation loss and metrics
