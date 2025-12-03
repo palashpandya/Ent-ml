@@ -30,7 +30,7 @@ def make_density(ypred):
         r2 = tf.matmul(r2, r2, adjoint_b=True)
         r2 = tf.scalar_mul(1. / tf.linalg.trace(r2), r2)
         kp = tf.linalg.LinearOperatorKronecker([tf.linalg.LinearOperatorFullMatrix(r1),tf.linalg.LinearOperatorFullMatrix(r2)])
-        print(kp.to_dense())
+        # print(kp.to_dense())
         part += tf.math.scalar_mul(tf.cast(pr[i],dtype=tf.complex64), kp.to_dense())
 
     return part
