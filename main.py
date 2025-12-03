@@ -96,16 +96,16 @@ if __name__ == '__main__':
     target = tf.constant([[0.5,0,0,0.5],[0,0,0,0],[0,0,0,0],[0.5,0,0,0.5]], dtype='complex64')
     # print(target)
     global num_pure
-    num_pure = 4
+    num_pure = 16
     inputs = tf.one_hot(tf.constant(range(num_pure)),depth=num_pure)
     # print(inputs)
 
     model = tf.keras.models.Sequential(
         [
             tf.keras.Input(shape=(num_pure,)),
-            tf.keras.layers.Dense(64,activation=tf.keras.layers.LeakyReLU(alpha=0.01)),
-            tf.keras.layers.Dense(64,activation=tf.keras.layers.LeakyReLU(alpha=0.01)),
-            tf.keras.layers.Dense(64, activation=tf.keras.layers.LeakyReLU(alpha=0.01)),
+            tf.keras.layers.Dense(64,activation=tf.keras.layers.LeakyReLU(negative_slope=0.01)),
+            tf.keras.layers.Dense(64,activation=tf.keras.layers.LeakyReLU(negative_slope=0.01)),
+            tf.keras.layers.Dense(64, activation=tf.keras.layers.LeakyReLU(negative_slope=0.01)),
             tf.keras.layers.Dense(9,activation='softmax')
         ]
     )
@@ -116,7 +116,7 @@ if __name__ == '__main__':
     # print(tf.reduce_sum(result[1]))
     # print("Check if we can make a valid density our of the results")
     # print(make_density(result))
-    model.compile(optimizer='adam',loss = custom_loss,metrics=[custom_loss])
+    model.compile(optimizer='sgd',loss = custom_loss,metrics=[custom_loss])
     # xy = [data for data in generate_test_train_XY(target, num_pure)]
     # print(tf.shape(xy))
     batchsize =320
@@ -126,8 +126,8 @@ if __name__ == '__main__':
     history = model.fit(
         generate_test_train_XY(target,num_pure),
         batch_size=num_pure,
-        epochs=16,
-        steps_per_epoch=40,
+        epochs=72,
+        steps_per_epoch=200,
         # epochs=3,
         # We pass some validation for
         # monitoring validation loss and metrics
