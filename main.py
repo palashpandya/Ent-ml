@@ -1,13 +1,15 @@
 import numpy as np
 import tensorflow as tf
+from scipy import io
+from tensorflow.python.keras.backend import dtype
 
-
+target  = tf.squeeze(tf.constant([io.mmread('target.mtx')]))
 
 def metric_hsd(r1,r2):
     # r21 = make_density(r2)
     # return tf.linalg.trace(tf.linalg.matmul((r1-r21), (r1-r21), adjoint_a = True))
-    r11 = tf.cast(r1,dtype=tf.complex64)
-    r22 = tf.cast(r2, dtype=tf.complex64)
+    r11 = tf.cast(r1,dtype=tf.complex128)
+    r22 = tf.cast(r2, dtype=tf.complex128)
     return tf.math.real(tf.linalg.trace(tf.linalg.matmul((r11 - r22), (r11 - r22), adjoint_a=True)))
 
 # @tf.function
@@ -29,14 +31,14 @@ def make_density2q(ypred):
         r2 = tf.scalar_mul(1. / tf.linalg.trace(r2), r2) # pure state on subsystem B
         kp = tf.linalg.LinearOperatorKronecker([tf.linalg.LinearOperatorFullMatrix(r1),tf.linalg.LinearOperatorFullMatrix(r2)])
         # print(kp.to_dense())
-        part += tf.math.scalar_mul(tf.cast(pr[i],dtype=tf.complex64), kp.to_dense()) # add p[i] r1[i] r2[i]
+        part += tf.math.scalar_mul(tf.cast(pr[i],dtype=tf.complex128), kp.to_dense()) # add p[i] r1[i] r2[i]
 
     return part
 
 # @tf.function
 def make_density3q(ypred):
     # make the probability vector and normalize it
-    pr = [ypred[i, 0] for i in range(num_pure)]
+    pr = [tf.cast(ypred[i, 0],dtype=tf.float64) for i in range(num_pure)]
     pr = tf.nn.softmax(pr)
     # make empty matrix where the CSS will be made
     part = tf.zeros_like(target)
@@ -56,8 +58,8 @@ def make_density3q(ypred):
         kp = tf.linalg.LinearOperatorKronecker(
             [tf.linalg.LinearOperatorFullMatrix(r1), tf.linalg.LinearOperatorFullMatrix(r2), tf.linalg.LinearOperatorFullMatrix(r3)])
         # print(kp.to_dense())
-        part += tf.math.scalar_mul(tf.cast(pr[i], dtype=tf.complex64), kp.to_dense())  # add p[i] r1[i] r2[i]
-
+        part += tf.math.scalar_mul(tf.cast(pr[i],dtype=tf.complex128), tf.cast(kp.to_dense(),dtype=tf.complex128))  # add p[i] r1[i] r2[i]
+#tf.cast(pr[i], dtype=tf.complex128)
     return part
 
 
@@ -117,29 +119,49 @@ def CC_mindelta():
 
 
 if __name__ == '__main__':
-    print(tf.__version__)
     # Build separable approximation of target state:
-    global target
+    # global target
+    target = tf.cast(target,dtype=tf.complex128)
+
     # 3 qubit W state
-    target = tf.constant([[0, 0, 0, 0, 0, 0, 0, 0],
+    target =  tf.constant([[0, 0, 0, 0, 0, 0, 0, 0],
                     [0, 1 / 3., 1 / 3., 0, 1 / 3., 0, 0, 0],
                     [0, 1 / 3., 1 / 3., 0, 1 / 3., 0, 0, 0],
                     [0, 0, 0, 0, 0, 0, 0, 0],
                     [0, 1 / 3., 1 / 3., 0, 1 / 3., 0, 0, 0],
                     [0, 0, 0, 0, 0, 0, 0, 0],
                     [0, 0, 0, 0, 0, 0, 0, 0],
-                    [0, 0, 0, 0, 0, 0, 0, 0]], dtype='complex64')
-    # Bell state 2 qubit
-    # target = tf.constant([[0.5,0,0,0.5],[0,0,0,0],[0,0,0,0],[0.5,0,0,0.5]], dtype='complex64')
+                    [0, 0, 0, 0, 0, 0, 0, 0]], dtype='complex128')
+    target = tf.constant([[0.5, 0, 0, 0, 0, 0, 0, 0.5],
+                    [0, 0., 0., 0, 0., 0, 0, 0],
+                    [0, 0., 0., 0, 0., 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0., 0., 0, 0., 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0],
+                    [0.5, 0, 0, 0, 0, 0, 0, 0.5]], dtype='complex128')
+    # target = tf.scalar_mul(tf.cast(tf.complex(0.19,0.),dtype=tf.complex128), tf.constant([[0, 0, 0, 0, 0, 0, 0, 0],
+    #                 [0, 1 / 3., 1 / 3., 0, 1 / 3., 0, 0, 0],
+    #                 [0, 1 / 3., 1 / 3., 0, 1 / 3., 0, 0, 0],
+    #                 [0, 0, 0, 0, 0, 0, 0, 0],
+    #                 [0, 1 / 3., 1 / 3., 0, 1 / 3., 0, 0, 0],
+    #                 [0, 0, 0, 0, 0, 0, 0, 0],
+    #                 [0, 0, 0, 0, 0, 0, 0, 0],
+    #                 [0, 0, 0, 0, 0, 0, 0, 0]], dtype='complex128'))+ tf.scalar_mul(tf.cast(tf.complex((1-0.19)*0.125,0.),dtype=tf.complex128), tf.eye(8,8,dtype=tf.complex128))
+    # # Bell state 2 qubit
+    # target = tf.constant([[0.5,0,0,0.5],[0,0,0,0],[0,0,0,0],[0.5,0,0,0.5]], dtype='complex128')
     # print(target)
     global num_pure
-    num_pure = 64
+    num_pure = 32
     inputs = tf.one_hot(tf.constant(range(num_pure)),depth=num_pure)
     # print(inputs)
 
     model = tf.keras.models.Sequential(
         [
             tf.keras.Input(shape=(num_pure,)),
+            tf.keras.layers.Dense(64, activation='tanh'),
+            tf.keras.layers.Dense(64, activation='tanh'),
+            tf.keras.layers.Dense(64, activation='tanh'),
             tf.keras.layers.Dense(64, activation='tanh'),
             tf.keras.layers.Dense(64, activation='tanh'),
             tf.keras.layers.Dense(64, activation='tanh'),
@@ -158,7 +180,7 @@ if __name__ == '__main__':
     history = model.fit(
         generate_test_train_XY(target,num_pure),
         batch_size=num_pure*2,
-        epochs=num_pure,
+        epochs=4,
         steps_per_epoch=num_pure**2,
         # We pass some validation for
         # monitoring validation loss and metrics
@@ -169,12 +191,16 @@ if __name__ == '__main__':
         shuffle = False, initial_epoch = 0
     )
     yres = model.predict(inputs)
+
     print("This is the result of the NN:")
     print(make_density3q(yres))
+    io.mmwrite("W3_PPT_CSS.mtx", make_density3q(yres))
     verify_density_matrix(make_density3q(yres).numpy())
+    # print("dist of css with half noise + W: ", metric_hsd(target2,make_density3q(yres)))
 
+    css = make_density3q(yres)
 
-
+    print(f"{tf.sqrt(metric_hsd(css,target))} is the final distance")
 
 
     # print(inputs)
