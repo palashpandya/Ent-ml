@@ -5,3 +5,4 @@ This repository has the objective of using Multi Layer Perceptron (MLP) broadly 
 
 - The implementation uses Tensorflow.
 - The size of the quantum state defines the size of the MLP.
+- ToDo: Refactor the code to use the classes defined in classes.py
